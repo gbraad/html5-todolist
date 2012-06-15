@@ -1,4 +1,5 @@
 StorageService = {}
+
 StorageService.setObject = function(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
 }
@@ -7,9 +8,42 @@ StorageService.getObject = function(key) {
     return value && JSON.parse(value);
 }
 
+StorageService.isSupported = function() {
+    return typeof (Storage) !== "undefined";
+}
+
 
 // TodoController
 TodoController = {}
+
+TodoController.init = function() {
+    // Check if local storage is supported
+    if (StorageService.isSupported()) {
+        if (!StorageService.getObject('todos')) {
+            TodoController.addTodo('Add my to-dos');
+        }
+        TodoController.updateList();
+    } else {
+        // No support for localStorage
+        $('#todoListHeader').text("No Storage support");
+    }
+
+    // Bind to keypress event for the input
+    $('#todo').bind('keypress', function(e) {
+        code = (e.keyCode ? e.keyCode : e.which)
+        if (code == 13) {
+            var value = $('#todo').val();
+            if(value != '') {
+                TodoController.addTodo(value);
+            }
+            e.preventDefault();
+
+	    // Empty fields
+            $('#todo').val('');
+	}
+    });
+}
+
 TodoController.updateList = function() {
     var todoList = $('#todoList');
     // Remove all except the first line
@@ -39,6 +73,11 @@ TodoController.deleteTodo = function(index) {
 }
 
 TodoController.addTodo = function(value) {
+    if(value == '') {
+        // Bailout
+        return false;
+    }
+
     // Construct JSON object
     var todo = {
         'todo': value
@@ -57,6 +96,8 @@ TodoController.addTodo = function(value) {
     StorageService.setObject('todos', todos);
 
     TodoController.updateList();
+
+    return true;
 }
 
 
@@ -71,30 +112,6 @@ $(document).bind('pagecreate', function() {
         $(".ui-dialog-background ").removeClass("ui-dialog-background");
     });
 
-    // Check if local storage is supported
-    if (typeof (Storage) !== "undefined") {
-        if (!StorageService.getObject('todos')) {
-            TodoController.addTodo('Add my to-dos');
-        }
-        TodoController.updateList();
-    } else {
-        // No support for localStorage
-        $('#todoListHeader').text("No Storage support");
-    }
-
-    // Bind to keypress event for the input
-    $('#todo').bind('keypress', function(e) {
-        code = (e.keyCode ? e.keyCode : e.which)
-        if (code == 13) {
-            var value = $('#todo').val();
-            if(value != '') {
-                TodoController.addTodo(value);
-            }
-            e.preventDefault();
-
-	    // Empty fields
-            $('#todo').val('');
-	}
-    });
+    TodoController.init();
 });
 
