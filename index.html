@@ -1,0 +1,33 @@
+<html>
+	<head>
+		<title>Simple To-do</title>
+		<script src="jquery-1.7.2.min.js"></script>
+		<script src="init.js"></script>
+		<script src="jquery.mobile-1.1.0.min.js"></script>
+		<script src="code.js"></script>
+		<link rel="stylesheet" href="jquery.mobile-1.1.0.min.css" />
+		<link rel="stylesheet" href="styling.css" />
+	</head>
+	<body>
+		<div data-role="page" id="main">
+			<div data-role="header">
+				<h1>Simple To-do</h1>
+			</div>
+
+			<div data-role="content">
+				<ul data-role="listview" data-inset="true" data-theme="g"  data-split-theme="d" data-split-icon="delete" id="todoList">
+					<li id="todoListHeader" data-role="list-divider">Todo</li>
+				</ul>
+				<p>
+					<form>
+						<input type="text" name="todo" id="todo" value="" />
+					</form>
+				</p>
+			</div>
+
+			<div data-role="footer">
+				<h1>@gbraad</h1>
+			</div>
+		</div>
+	</body>
+</html>
