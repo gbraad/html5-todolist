@@ -32,6 +32,7 @@ StorageService.isSupported = function() {
 
 // TodoController
 TodoController = {}
+TodoController.TIMERINTERVAL = 10;	// in seconds
 
 TodoController.init = function() {
     // Check if local storage is supported
@@ -59,25 +60,40 @@ TodoController.init = function() {
             $('#todo').val('');
 	}
     });
+
+    // Set timer to show dates on notes in human readable form
+    setInterval(TodoController.timerTick, TodoController.TIMERINTERVAL * 1000);
 }
 
 TodoController.updateList = function() {
     var todoList = $('#todoList');
     // Remove all except the first line
     todoList.find("li:gt(0)").remove();
-    //todoList.remove();
 
-    $.each(StorageService.getObject('todos'), function (index, item) {
+    var todos = StorageService.getObject('todos');
+    $('#todoCount').html(todos.length);
+    $.each(todos, function (index, item) {
         var delLink = $('<a href="#"></a>');
         delLink.click(function () {
             TodoController.deleteTodo(index)
         });
-        var todoLink = $('<a href="#"><h3>' + item.todo + '</h3></a>');
+        var todoLink = $('<a href="#"><h3>' + item.todo + '</h3><p><span class="date" title="' + item.date + '">' + item.date + '</span></p></a>');
         var todoItem = $('<li>').append(todoLink).append(delLink);
 
         todoList.append(todoItem);
     });
+
+    // Force timerTick
+    TodoController.timerTick();
+
     todoList.listview('refresh');
+}
+
+TodoController.timerTick = function() {
+    // Make dates human readable
+    $('.date').easydate({live: false});		// disable plugins live view
+
+    return true;
 }
 
 TodoController.deleteTodo = function(index) {
@@ -96,8 +112,10 @@ TodoController.addTodo = function(value) {
     }
 
     // Construct JSON object
+    var now = new Date().toUTCString();
     var todo = {
-        'todo': value
+        'todo': value,
+        'date': now
     };
 
     // Get existing list of objects
