@@ -16,35 +16,71 @@
 
 
 StorageService = {}
+StorageService.database = null;
 
-StorageService.setObject = function(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+StorageService.init = function(callback) {
+    Pouch('idb://todos', function(err, db) {
+        if(!err) {
+	     StorageService.database = db;
+             // eeewww
+             StorageService.getAll(callback);
+        }        
+    });
 }
-StorageService.getObject = function(key) {
-    var value = localStorage.getItem(key);
-    return value && JSON.parse(value);
+StorageService.put = function(value, callback) {
+    StorageService.database.post(value, function(err, response) {
+        if(!err) {
+             StorageService.getAll(callback);
+        }
+    });
 }
+StorageService.get = function(id, callback) {
+    StorageService.database.get(id, function(err, response) {
+        if(!err) {
+             callback(response);
+        }
+    })
+}
+StorageService.getAll = function(callback) {
+    if(!StorageService.database) {
+        StorageService.init(callback);
+        return;
+    }
 
-StorageService.isSupported = function() {
-    return typeof (Storage) !== "undefined";
+    StorageService.database.allDocs({reduce: false, include_docs: true,}, function(err, response) {
+        if(!err) {
+             var data = [];
+             if(response.rows == 0) {
+                 callback(data);
+             } else {
+                 $.each(response.rows, function (index, item) {
+                     StorageService.get(item.id, function(result) {
+                         data.push(result);
+		         if (index === response.rows.length-1) {
+                             callback(data);
+                         }
+                     });
+                 });
+            }
+        }
+    });
 }
-
+StorageService.remove = function(id, callback) {
+    StorageService.get(id, function(doc) {
+        StorageService.database.remove(doc, function(err, response) {
+            if(!err) {
+                StorageService.getAll(callback);
+            }
+        });
+    });
+}
 
 // TodoController
 TodoController = {}
 TodoController.TIMERINTERVAL = 10;	// in seconds
 
 TodoController.init = function() {
-    // Check if local storage is supported
-    if (StorageService.isSupported()) {
-        if (!StorageService.getObject('todos')) {
-            TodoController.addTodo('Add my to-dos');
-        }
-        TodoController.updateList();
-    } else {
-        // No support for localStorage
-        $('#todoListHeader').text("No Storage support");
-    }
+    StorageService.getAll(TodoController.updateList);
 
     // Bind to keypress event for the input
     $('#todo').bind('keypress', function(e) {
@@ -65,17 +101,21 @@ TodoController.init = function() {
     setInterval(TodoController.timerTick, TodoController.TIMERINTERVAL * 1000);
 }
 
-TodoController.updateList = function() {
+
+TodoController.updateList = function(todos) {
     var todoList = $('#todoList');
     // Remove all except the first line
     todoList.find("li:gt(0)").remove();
 
-    var todos = StorageService.getObject('todos');
     $('#todoCount').html(todos.length);
+
+    // Sort documents by date    
+    todos.sort( function(a, b) { return (new Date(a.date).getTime() - new Date(b.date).getTime()) } );
+
     $.each(todos, function (index, item) {
         var delLink = $('<a href="#"></a>');
         delLink.click(function () {
-            TodoController.deleteTodo(index)
+            TodoController.deleteTodo(item._id);
         });
         var todoLink = $('<a href="#"><h3>' + item.todo + '</h3><p><span class="date" title="' + item.date + '">' + item.date + '</span></p></a>');
         var todoItem = $('<li>').append(todoLink).append(delLink);
@@ -96,13 +136,8 @@ TodoController.timerTick = function() {
     return true;
 }
 
-TodoController.deleteTodo = function(index) {
-    var todos = StorageService.getObject('todos');
-    todos.splice(index, 1);
-    // Persist in localstorage
-    StorageService.setObject('todos', todos);
-
-    TodoController.updateList();
+TodoController.deleteTodo = function(id) {
+    StorageService.remove(id, TodoController.updateList);
 }
 
 TodoController.addTodo = function(value) {
@@ -118,19 +153,8 @@ TodoController.addTodo = function(value) {
         'date': now
     };
 
-    // Get existing list of objects
-    var todos = StorageService.getObject('todos');
-    if (!todos) {
-        todos = [];
-    }
-
-    // Add to list
-    todos.push(todo);
-
     // Persist in localstorage
-    StorageService.setObject('todos', todos);
-
-    TodoController.updateList();
+    StorageService.put(todo, TodoController.updateList);
 
     return true;
 }
